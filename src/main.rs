@@ -411,16 +411,6 @@ fn create_incubator_card(
         .build();
     header_row.append(&title_label);
 
-    let clock_icon = gtk::Image::builder()
-        .icon_name("alarm-symbolic")
-        .build();
-    header_row.append(&clock_icon);
-
-    let edit_icon = gtk::Image::builder()
-        .icon_name("document-edit-symbolic")
-        .build();
-    header_row.append(&edit_icon);
-
     // Spacer
     let spacer = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     spacer.set_hexpand(true);
