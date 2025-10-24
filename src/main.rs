@@ -2,6 +2,8 @@ use gtk4::prelude::*;
 use gtk4::{self as gtk};
 use libadwaita as adw;
 use adw::prelude::*;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 fn main() {
     let app = adw::Application::builder()
@@ -33,8 +35,8 @@ fn load_css() {
         }
 
         .toolbar {
-            background-color: rgba(17, 24, 39, 0.95);
-            border-bottom: 1px solid rgba(55, 65, 81, 0.5);
+            background-color: transparent;
+            border-bottom: 1px solid rgba(55, 65, 81, 0.3);
         }
 
         .card {
@@ -170,19 +172,20 @@ fn build_ui(app: &adw::Application) {
     let top_nav = create_top_navigation();
     main_box.append(&top_nav);
 
-    // Date picker and search section
-    let date_search = create_date_search_section();
-    main_box.append(&date_search);
-
-    // Scrollable content area
+    // Scrollable content area - create this first so we have the cards list
     let scrolled = gtk::ScrolledWindow::builder()
         .hscrollbar_policy(gtk::PolicyType::Never)
         .vscrollbar_policy(gtk::PolicyType::Automatic)
         .vexpand(true)
         .build();
 
-    let content = create_content_area();
+    let (content, cards) = create_content_area();
     scrolled.set_child(Some(&content));
+
+    // Date picker and search section - pass cards for filtering
+    let date_search = create_date_search_section(cards);
+    main_box.append(&date_search);
+
     main_box.append(&scrolled);
 
     window.set_content(Some(&main_box));
@@ -288,7 +291,7 @@ fn create_top_navigation() -> gtk::Box {
     nav_bar
 }
 
-fn create_date_search_section() -> gtk::Box {
+fn create_date_search_section(cards: Vec<(String, gtk::Frame)>) -> gtk::Box {
     let section = gtk::Box::builder()
         .orientation(gtk::Orientation::Horizontal)
         .spacing(16)
@@ -325,6 +328,21 @@ fn create_date_search_section() -> gtk::Box {
         .build();
     section.append(&search_entry);
 
+    // Connect search functionality
+    let cards_rc = Rc::new(RefCell::new(cards));
+    search_entry.connect_search_changed(move |entry| {
+        let search_text = entry.text().to_lowercase();
+        let cards = cards_rc.borrow();
+
+        for (name, frame) in cards.iter() {
+            if search_text.is_empty() {
+                frame.set_visible(true);
+            } else {
+                frame.set_visible(name.to_lowercase().contains(&search_text));
+            }
+        }
+    });
+
     // Today button
     let today_btn = gtk::Button::builder()
         .label("Today")
@@ -335,7 +353,7 @@ fn create_date_search_section() -> gtk::Box {
     section
 }
 
-fn create_content_area() -> gtk::Box {
+fn create_content_area() -> (gtk::Box, Vec<(String, gtk::Frame)>) {
     let content = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
         .spacing(16)
@@ -359,12 +377,15 @@ fn create_content_area() -> gtk::Box {
         ("Incubator I", "Orius", "Half", "1/2", vec![("Harvest Adults", false, false), ("Feed Insects", true, false)], "Population: 90", "ID: c5e92b7d..."),
     ];
 
+    let mut cards = Vec::new();
+
     for (name, species, status, progress, tasks, population, id) in incubators {
         let card = create_incubator_card(name, species, status, progress, tasks, population, id);
         content.append(&card);
+        cards.push((name.to_string(), card));
     }
 
-    content
+    (content, cards)
 }
 
 fn create_incubator_card(
