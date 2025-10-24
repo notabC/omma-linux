@@ -39,6 +39,19 @@ fn load_css() {
             border-bottom: 1px solid rgba(55, 65, 81, 0.3);
         }
 
+        headerbar {
+            background-color: transparent;
+            background-image: none;
+            box-shadow: none;
+            border: none;
+            min-height: 0;
+            padding: 4px;
+        }
+
+        headerbar.flat {
+            background: transparent;
+        }
+
         .card {
             background-color: rgba(31, 41, 55, 0.5);
             border: 1px solid rgba(55, 65, 81, 0.5);
@@ -162,10 +175,11 @@ fn build_ui(app: &adw::Application) {
     // Main vertical container
     let main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
 
-    // Add header bar with window controls (red/yellow/green buttons)
+    // Add header bar with window controls but no title
     let header_bar = adw::HeaderBar::builder()
-        .title_widget(&gtk::Label::new(Some("Omma")))
+        .show_title(false)
         .build();
+    header_bar.add_css_class("flat");
     main_box.append(&header_bar);
 
     // Top navigation bar with logo and breadcrumbs
@@ -232,7 +246,7 @@ fn create_top_navigation() -> gtk::Box {
         .build();
 
     let crumb1 = gtk::Button::builder()
-        .label("Summerberry ▾")
+        .label("Summerberry")
         .valign(gtk::Align::Center)
         .build();
     breadcrumbs.append(&crumb1);
@@ -244,7 +258,7 @@ fn create_top_navigation() -> gtk::Box {
     breadcrumbs.append(&sep1);
 
     let crumb2 = gtk::Button::builder()
-        .label("Groves Farm ▾")
+        .label("Groves Farm")
         .valign(gtk::Align::Center)
         .build();
     breadcrumbs.append(&crumb2);
@@ -256,7 +270,7 @@ fn create_top_navigation() -> gtk::Box {
     breadcrumbs.append(&sep2);
 
     let crumb3 = gtk::Button::builder()
-        .label("Summerberry ▾")
+        .label("Summerberry")
         .valign(gtk::Align::Center)
         .build();
     breadcrumbs.append(&crumb3);
@@ -534,6 +548,14 @@ fn create_task_row(label: &str, initial_checked: bool, cancelled: bool) -> gtk::
         .icon_name("view-more-symbolic")
         .build();
     row.append(&more_btn);
+
+    // Make the entire row clickable to toggle checkbox
+    let gesture = gtk::GestureClick::new();
+    let checkbox_clone = checkbox.clone();
+    gesture.connect_released(move |_, _, _, _| {
+        checkbox_clone.set_active(!checkbox_clone.is_active());
+    });
+    row.add_controller(gesture);
 
     row
 }
