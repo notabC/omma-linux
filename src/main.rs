@@ -267,7 +267,7 @@ fn create_top_navigation() -> gtk::Box {
 
     // Right side buttons
     let harvest_btn = gtk::Button::builder()
-        .label("⚒ Harvest")
+        .label("Harvest")
         .css_classes(vec!["suggested-action"])
         .valign(gtk::Align::Center)
         .build();
@@ -307,7 +307,7 @@ fn create_date_search_section() -> gtk::Box {
     date_box.append(&prev_btn);
 
     let date_btn = gtk::Button::builder()
-        .label("Oct 16, 2025 📅")
+        .label("Oct 16, 2025")
         .build();
     date_box.append(&date_btn);
 
