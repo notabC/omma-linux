@@ -146,9 +146,12 @@ omma
 ### Why This Matters for Low-RAM Devices
 
 Compiling Rust on a 1GB RAM Raspberry Pi is painful or impossible. GitHub Actions builds use:
-- **QEMU emulation** to run ARM containers on x86_64 runners
-- **Native ARM compilation** inside the container for compatibility
-- **Docker with Debian Bookworm** to match Pi OS environment
+- **GitHub's native ARM64 runners** (FREE for public repos as of Jan 2025!)
+- **4 vCPU Cobalt 100 processors** - 40% faster than previous generation
+- **Native ARM compilation** - no emulation overhead
+- **Build time: 3-5 minutes** (first build), ~2-3 min cached
+
+For ARM32 builds, we use `pguyot/arm-runner-action` with Raspbian OS image.
 
 This means your Pi just downloads and runs - no compilation needed!
 
