@@ -191,6 +191,9 @@ fn build_ui(app: &adw::Application) {
         .hscrollbar_policy(gtk::PolicyType::Never)
         .vscrollbar_policy(gtk::PolicyType::Automatic)
         .vexpand(true)
+        .kinetic_scrolling(true)  // Enable smooth scrolling with mouse wheel on Linux
+        .min_content_height(400)   // Ensure proper sizing
+        .propagate_natural_height(false)  // Let scrolling work properly
         .build();
 
     let (content, cards) = create_content_area();
