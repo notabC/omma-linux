@@ -161,6 +161,12 @@ fn build_ui(app: &adw::Application) {
         .default_height(900)
         .build();
 
+    // Check for kiosk mode environment variable
+    if std::env::var("OMMA_KIOSK_MODE").is_ok() {
+        window.maximize();
+        window.set_fullscreened(true);
+    }
+
     // Note: macOS dock icons with GTK apps require .app bundle packaging
     // For now, the dock will show the default GTK icon
     // This would work properly on Linux/Pi where GTK is native
@@ -221,23 +227,30 @@ fn create_top_navigation() -> gtk::Box {
         .valign(gtk::Align::Center)
         .build();
 
-    // Omma logo - load and scale to exact size
-    let logo_path = "/Users/dongyiuwu/SoftwareDevelopment/omma-linux/logo_full.png";
-    let logo = if let Ok(pixbuf) = gtk::gdk_pixbuf::Pixbuf::from_file_at_scale(
-        logo_path,
-        140,  // width
-        36,   // height - reduced for more compact nav
-        true  // preserve aspect ratio
-    ) {
-        // Use Texture instead of deprecated from_pixbuf
-        let texture = gtk::gdk::Texture::for_pixbuf(&pixbuf);
-        let picture = gtk::Picture::for_paintable(&texture);
-        picture.set_valign(gtk::Align::Center);
-        picture
-    } else {
-        // Fallback if image fails to load
-        gtk::Picture::new()
-    };
+    // Omma logo - try multiple paths (Pi, dev, system)
+    let logo_paths = [
+        "/usr/share/pixmaps/omma.png",
+        "/home/omma/Documents/omma-linux/logo_full.png",
+        "./logo_full.png",
+        "/Users/dongyiuwu/SoftwareDevelopment/omma-linux/logo_full.png",
+    ];
+
+    let logo = logo_paths.iter()
+        .find_map(|path| {
+            gtk::gdk_pixbuf::Pixbuf::from_file_at_scale(
+                path,
+                140,  // width
+                36,   // height
+                true  // preserve aspect ratio
+            ).ok()
+        })
+        .map(|pixbuf| {
+            let texture = gtk::gdk::Texture::for_pixbuf(&pixbuf);
+            let picture = gtk::Picture::for_paintable(&texture);
+            picture.set_valign(gtk::Align::Center);
+            picture
+        })
+        .unwrap_or_else(|| gtk::Picture::new());
 
     nav_bar.append(&logo);
 
