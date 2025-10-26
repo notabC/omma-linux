@@ -89,71 +89,59 @@ The binary will be at: `./target/release/hello-gtk-pi`
 
 **Release builds are recommended for deployment** - they're optimized and much smaller (~473KB vs ~2MB for debug).
 
-## CI/CD - Automated Builds
+## Building Releases for Raspberry Pi
 
-This project uses **GitHub Actions** to automatically build ARM binaries for Raspberry Pi on every push. This means you **never need to compile on your Pi** - just download the pre-built binary!
+This project uses **local Docker builds** to create ARM64 binaries for Raspberry Pi. This means you **never need to compile on your Pi** - just download the pre-built binary from GitHub releases!
 
-### How It Works
+### Why Local Docker Builds?
 
-1. **Push to `master`** → GitHub Actions automatically builds ARM64 and ARM32 binaries
-2. **Create a tag** (e.g., `v1.0.0`) → Automatically creates a GitHub release with binaries
-3. **Download on Pi** → Use the download script or grab binaries from GitHub releases
-
-### Available Binaries
-
-After each push to master, two binaries are built:
-
-- **`omma-aarch64-unknown-linux-gnu`** - For Raspberry Pi 3/4/5 (64-bit OS)
-- **`omma-armv7-unknown-linux-gnueabihf`** - For Raspberry Pi 2/3 (32-bit OS)
-
-Binaries are available for 30 days as GitHub Actions artifacts.
+Compiling Rust on a 1GB RAM Raspberry Pi is painful or impossible. Instead, we build ARM binaries locally on Mac using:
+- **Docker + Fedora** - Proper GTK4 support out of the box
+- **Native ARM64 emulation** - Apple Silicon Macs can run ARM64 natively
+- **Build time: ~27 seconds** on M4 Pro
+- **Binary size: ~450KB**
 
 ### Creating a Release
 
-To create a permanent release:
+Run the automated build script:
 
 ```bash
-# Tag your commit
-git tag -a v1.0.0 -m "Release version 1.0.0"
-git push origin v1.0.0
+./build-and-release-arm64.sh
 ```
 
-This will automatically:
-- Build both ARM variants
-- Create a GitHub release
-- Attach binaries to the release
-- Add installation instructions
+This will:
+1. Build ARM64 binary using Fedora Docker image
+2. Create a git tag
+3. Push to GitHub
+4. Create a GitHub release with the binary attached
 
 ### On Your Raspberry Pi
+
+Download and install from the latest release:
 
 ```bash
 # Install GTK4 dependencies (one-time)
 sudo apt-get update
 sudo apt-get install -y libgtk-4-1 libadwaita-1-0
 
-# Download and install latest build
-./download-latest.sh
+# Download the binary (check releases for latest version)
+wget https://github.com/notabC/omma-linux/releases/download/v1.0.1/omma-aarch64-unknown-linux-gnu
 
-# Or manually download from releases
-wget https://github.com/YOUR_USERNAME/omma-linux/releases/download/v1.0.0/omma-aarch64-unknown-linux-gnu
+# Make it executable
 chmod +x omma-aarch64-unknown-linux-gnu
+
+# Move to system path
 sudo mv omma-aarch64-unknown-linux-gnu /usr/local/bin/omma
 
 # Run the app
 omma
 ```
 
-### Why This Matters for Low-RAM Devices
+### Build Requirements (Development Machine)
 
-Compiling Rust on a 1GB RAM Raspberry Pi is painful or impossible. GitHub Actions builds use:
-- **GitHub's native ARM64 runners** (FREE for public repos as of Jan 2025!)
-- **4 vCPU Cobalt 100 processors** - 40% faster than previous generation
-- **Native ARM compilation** - no emulation overhead
-- **Build time: 3-5 minutes** (first build), ~2-3 min cached
-
-For ARM32 builds, we use `pguyot/arm-runner-action` with Raspbian OS image.
-
-This means your Pi just downloads and runs - no compilation needed!
+- **Docker Desktop** - For building ARM binaries
+- **GitHub CLI (`gh`)** - For creating releases
+- Recommended: Apple Silicon Mac for fast native ARM64 builds
 
 ## Running the App
 
