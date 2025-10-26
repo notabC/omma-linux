@@ -2,8 +2,8 @@ name: Build and Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - master
 
 permissions:
   contents: write
@@ -13,6 +13,34 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Need full history to get tags
+
+    - name: Get next version
+      id: version
+      run: |
+        # Read version from Cargo.toml
+        CARGO_VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+        echo "Cargo.toml version: $CARGO_VERSION"
+
+        # Extract version numbers
+        MAJOR=$(echo $CARGO_VERSION | cut -d. -f1)
+        MINOR=$(echo $CARGO_VERSION | cut -d. -f2)
+        PATCH=$(echo $CARGO_VERSION | cut -d. -f3)
+
+        # Increment patch version
+        NEW_PATCH=$((PATCH + 1))
+        NEW_VERSION="v${MAJOR}.${MINOR}.${NEW_PATCH}"
+
+        echo "New version: $NEW_VERSION"
+        echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+    - name: Create and push tag
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git tag ${{ steps.version.outputs.version }}
+        git push origin ${{ steps.version.outputs.version }}
 
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v3
@@ -47,9 +75,10 @@ jobs:
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
+        tag_name: ${{ steps.version.outputs.version }}
         files: dist/omma-aarch64-unknown-linux-gnu
         body: |
-          ## Omma Linux ${{ github.ref_name }}
+          ## Omma Linux ${{ steps.version.outputs.version }}
 
           **ARM64 build for Raspberry Pi 3/4/5 with 64-bit OS**
 
@@ -61,7 +90,7 @@ jobs:
           sudo apt-get install -y libgtk-4-1 libadwaita-1-0
 
           # Download the binary
-          wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/omma-aarch64-unknown-linux-gnu
+          wget https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.version }}/omma-aarch64-unknown-linux-gnu
 
           # Make it executable
           chmod +x omma-aarch64-unknown-linux-gnu
