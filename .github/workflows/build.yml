@@ -14,50 +14,37 @@ env:
 
 jobs:
   build-linux-arm64:
-    runs-on: ubuntu-22.04-arm  # Native ARM64 runner (FREE for public repos!)
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config build-essential
-
-    - name: Set up Rust
-      uses: actions-rust-lang/setup-rust-toolchain@v1
+    - name: Build in ARM64 environment
+      uses: pguyot/arm-runner-action@v2
       with:
-        toolchain: stable
+        base_image: https://dietpi.com/downloads/images/DietPi_RPi-ARMv8-Bookworm.img.xz
+        cpu: cortex-a53
+        bind_mount_repository: true
+        image_additional_mb: 10240
+        optimize_image: false
+        commands: |
+          # Install dependencies
+          apt-get update
+          apt-get install -y curl build-essential libgtk-4-dev libadwaita-1-dev pkg-config
 
-    - name: Cache cargo registry
-      uses: actions/cache@v4
-      with:
-        path: ~/.cargo/registry
-        key: ${{ runner.os }}-arm64-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          # Install Rust
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          source "$HOME/.cargo/env"
 
-    - name: Cache cargo index
-      uses: actions/cache@v4
-      with:
-        path: ~/.cargo/git
-        key: ${{ runner.os }}-arm64-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+          # Build release binary
+          cargo build --release
+          strip target/release/omma
 
-    - name: Cache cargo build
-      uses: actions/cache@v4
-      with:
-        path: target
-        key: ${{ runner.os }}-arm64-cargo-build-${{ hashFiles('**/Cargo.lock') }}
-
-    - name: Build release binary (native ARM64)
-      run: |
-        cargo build --release
-        strip target/release/omma
-
-    - name: Prepare artifact
-      run: |
-        mkdir -p dist
-        cp target/release/omma dist/omma-aarch64-unknown-linux-gnu
-        chmod +x dist/omma-aarch64-unknown-linux-gnu
-        ls -lh dist/
-        file dist/omma-aarch64-unknown-linux-gnu
+          # Prepare artifact
+          mkdir -p dist
+          cp target/release/omma dist/omma-aarch64-unknown-linux-gnu
+          chmod +x dist/omma-aarch64-unknown-linux-gnu
+          ls -lh dist/
+          file dist/omma-aarch64-unknown-linux-gnu
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
