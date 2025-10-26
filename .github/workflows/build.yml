@@ -14,61 +14,50 @@ env:
 
 jobs:
   build-linux-arm64:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04-arm  # Native ARM64 runner (FREE for public repos!)
     steps:
     - uses: actions/checkout@v4
 
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y gcc-aarch64-linux-gnu libgtk-4-dev libadwaita-1-dev pkg-config
+        sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config build-essential
 
     - name: Set up Rust
       uses: actions-rust-lang/setup-rust-toolchain@v1
       with:
         toolchain: stable
-        target: aarch64-unknown-linux-gnu
 
     - name: Cache cargo registry
       uses: actions/cache@v4
       with:
         path: ~/.cargo/registry
-        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.os }}-arm64-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Cache cargo index
       uses: actions/cache@v4
       with:
         path: ~/.cargo/git
-        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.os }}-arm64-cargo-index-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Cache cargo build
       uses: actions/cache@v4
       with:
         path: target
-        key: ${{ runner.os }}-cargo-build-arm64-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.os }}-arm64-cargo-build-${{ hashFiles('**/Cargo.lock') }}
 
-    - name: Configure cross-compilation
+    - name: Build release binary (native ARM64)
       run: |
-        mkdir -p .cargo
-        cat >> .cargo/config.toml << EOF
-        [target.aarch64-unknown-linux-gnu]
-        linker = "aarch64-linux-gnu-gcc"
-        EOF
-
-    - name: Build release binary
-      env:
-        PKG_CONFIG_PATH: /usr/lib/aarch64-linux-gnu/pkgconfig
-        PKG_CONFIG_ALLOW_CROSS: 1
-      run: |
-        cargo build --release --target aarch64-unknown-linux-gnu
-        aarch64-linux-gnu-strip target/aarch64-unknown-linux-gnu/release/omma
+        cargo build --release
+        strip target/release/omma
 
     - name: Prepare artifact
       run: |
         mkdir -p dist
-        cp target/aarch64-unknown-linux-gnu/release/omma dist/omma-aarch64-unknown-linux-gnu
+        cp target/release/omma dist/omma-aarch64-unknown-linux-gnu
         chmod +x dist/omma-aarch64-unknown-linux-gnu
         ls -lh dist/
+        file dist/omma-aarch64-unknown-linux-gnu
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
@@ -82,57 +71,30 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc-arm-linux-gnueabihf libgtk-4-dev libadwaita-1-dev pkg-config
-
-    - name: Set up Rust
-      uses: actions-rust-lang/setup-rust-toolchain@v1
+    - name: Build in ARM32 environment
+      uses: pguyot/arm-runner-action@v2
       with:
-        toolchain: stable
-        target: armv7-unknown-linux-gnueabihf
+        base_image: raspios_lite:latest
+        cpu: cortex-a7
+        commands: |
+          # Install dependencies
+          sudo apt-get update
+          sudo apt-get install -y curl build-essential libgtk-4-dev libadwaita-1-dev pkg-config
 
-    - name: Cache cargo registry
-      uses: actions/cache@v4
-      with:
-        path: ~/.cargo/registry
-        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          # Install Rust
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          source "$HOME/.cargo/env"
 
-    - name: Cache cargo index
-      uses: actions/cache@v4
-      with:
-        path: ~/.cargo/git
-        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+          # Build release binary
+          cargo build --release
+          strip target/release/omma
 
-    - name: Cache cargo build
-      uses: actions/cache@v4
-      with:
-        path: target
-        key: ${{ runner.os }}-cargo-build-arm32-${{ hashFiles('**/Cargo.lock') }}
-
-    - name: Configure cross-compilation
-      run: |
-        mkdir -p .cargo
-        cat >> .cargo/config.toml << EOF
-        [target.armv7-unknown-linux-gnueabihf]
-        linker = "arm-linux-gnueabihf-gcc"
-        EOF
-
-    - name: Build release binary
-      env:
-        PKG_CONFIG_PATH: /usr/lib/arm-linux-gnueabihf/pkgconfig
-        PKG_CONFIG_ALLOW_CROSS: 1
-      run: |
-        cargo build --release --target armv7-unknown-linux-gnueabihf
-        arm-linux-gnueabihf-strip target/armv7-unknown-linux-gnueabihf/release/omma
-
-    - name: Prepare artifact
-      run: |
-        mkdir -p dist
-        cp target/armv7-unknown-linux-gnueabihf/release/omma dist/omma-armv7-unknown-linux-gnueabihf
-        chmod +x dist/omma-armv7-unknown-linux-gnueabihf
-        ls -lh dist/
+          # Prepare artifact
+          mkdir -p dist
+          cp target/release/omma dist/omma-armv7-unknown-linux-gnueabihf
+          chmod +x dist/omma-armv7-unknown-linux-gnueabihf
+          ls -lh dist/
+          file dist/omma-armv7-unknown-linux-gnueabihf
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
