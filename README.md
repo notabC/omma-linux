@@ -52,9 +52,22 @@ source "$HOME/.cargo/env"
 brew install gtk4 libadwaita pkgconf
 ```
 
-#### On Raspberry Pi:
+#### On Raspberry Pi (Download Pre-built Binary):
 
-See [DEPLOY.md](DEPLOY.md) for detailed deployment instructions.
+**No compilation needed!** Download pre-built binaries from GitHub Actions:
+
+```bash
+# Option 1: Use the download script (easiest)
+curl -O https://raw.githubusercontent.com/YOUR_USERNAME/omma-linux/master/download-latest.sh
+chmod +x download-latest.sh
+./download-latest.sh
+
+# Option 2: Manual download from GitHub releases
+# Visit: https://github.com/YOUR_USERNAME/omma-linux/releases/latest
+# Download the appropriate binary for your Pi
+```
+
+**Manual Raspberry Pi build:** See [DEPLOY.md](DEPLOY.md) for detailed compilation instructions.
 
 ## Building the App
 
@@ -75,6 +88,69 @@ cargo build --release
 The binary will be at: `./target/release/hello-gtk-pi`
 
 **Release builds are recommended for deployment** - they're optimized and much smaller (~473KB vs ~2MB for debug).
+
+## CI/CD - Automated Builds
+
+This project uses **GitHub Actions** to automatically build ARM binaries for Raspberry Pi on every push. This means you **never need to compile on your Pi** - just download the pre-built binary!
+
+### How It Works
+
+1. **Push to `master`** → GitHub Actions automatically builds ARM64 and ARM32 binaries
+2. **Create a tag** (e.g., `v1.0.0`) → Automatically creates a GitHub release with binaries
+3. **Download on Pi** → Use the download script or grab binaries from GitHub releases
+
+### Available Binaries
+
+After each push to master, two binaries are built:
+
+- **`omma-aarch64-unknown-linux-gnu`** - For Raspberry Pi 3/4/5 (64-bit OS)
+- **`omma-armv7-unknown-linux-gnueabihf`** - For Raspberry Pi 2/3 (32-bit OS)
+
+Binaries are available for 30 days as GitHub Actions artifacts.
+
+### Creating a Release
+
+To create a permanent release:
+
+```bash
+# Tag your commit
+git tag -a v1.0.0 -m "Release version 1.0.0"
+git push origin v1.0.0
+```
+
+This will automatically:
+- Build both ARM variants
+- Create a GitHub release
+- Attach binaries to the release
+- Add installation instructions
+
+### On Your Raspberry Pi
+
+```bash
+# Install GTK4 dependencies (one-time)
+sudo apt-get update
+sudo apt-get install -y libgtk-4-1 libadwaita-1-0
+
+# Download and install latest build
+./download-latest.sh
+
+# Or manually download from releases
+wget https://github.com/YOUR_USERNAME/omma-linux/releases/download/v1.0.0/omma-aarch64-unknown-linux-gnu
+chmod +x omma-aarch64-unknown-linux-gnu
+sudo mv omma-aarch64-unknown-linux-gnu /usr/local/bin/omma
+
+# Run the app
+omma
+```
+
+### Why This Matters for Low-RAM Devices
+
+Compiling Rust on a 1GB RAM Raspberry Pi is painful or impossible. GitHub Actions builds use:
+- **QEMU emulation** to run ARM containers on x86_64 runners
+- **Native ARM compilation** inside the container for compatibility
+- **Docker with Debian Bookworm** to match Pi OS environment
+
+This means your Pi just downloads and runs - no compilation needed!
 
 ## Running the App
 
